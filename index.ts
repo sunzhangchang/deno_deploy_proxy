@@ -20,6 +20,8 @@ function handler(req: Request): Promise<Response> {
     if (url.length === 0) {
         url = 'https://gist.github.com'
     }
+    
+    console.log(url)
 
     return fetch(url, {
         headers: req.headers,
