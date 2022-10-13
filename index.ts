@@ -5,6 +5,8 @@ import { serve } from 'https://deno.land/std@0.155.0/http/server.ts'
 // const proxy_domain = 'https://gist.github.com'
 
 function handler(req: Request): Promise<Response> {
+    console.log(req)
+    
     const parts = req.url.split('deno.dev')
     let url = ''
 
@@ -20,7 +22,7 @@ function handler(req: Request): Promise<Response> {
     if (url.length === 0) {
         url = 'https://gist.github.com'
     }
-    
+
     console.log(url)
 
     return fetch(url, {
