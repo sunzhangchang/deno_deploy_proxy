@@ -47,6 +47,30 @@ const PREFLIGHT_INIT: RequestInit = {
     }),
 } as RequestInit
 
+const HeA = [
+    'access-control-allow-origin',
+    'access-control-expose-headers',
+    'location',
+    'set-cookie',
+]
+
+const HeB = [
+    'cache-control',
+    'content-language',
+    'content-type',
+    'expires',
+    'last-modified',
+    'pragma',
+]
+
+const Sta = [
+    301,
+    302,
+    303,
+    307,
+    308,
+]
+
 function makeRes(body: BodyInit | null | undefined, status = 200, headers: Record<string, string> = {}) {
     headers['--ver'] = JS_VER
     headers['access-control-allow-origin'] = '*'
@@ -175,30 +199,6 @@ function httpHandler(req: Request, pathname: string) {
         return makeRes('invalid proxy url: ' + urlStr, 403)
     }
 }
-
-const HeA = [
-    'access-control-allow-origin',
-    'access-control-expose-headers',
-    'location',
-    'set-cookie',
-]
-
-const HeB = [
-    'cache-control',
-    'content-language',
-    'content-type',
-    'expires',
-    'last-modified',
-    'pragma',
-]
-
-const Sta = [
-    301,
-    302,
-    303,
-    307,
-    308,
-]
 
 async function proxy(urlObj: URL, reqInit: RequestInit, acehOld: boolean, rawLen: number, retryTimes: number): Promise<Response> {
     const res = await fetch(urlObj.href, reqInit)
