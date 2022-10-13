@@ -66,7 +66,7 @@ async function fetchHandler(req: Request): Promise<Response> {
     const urlObj = new URL(urlStr)
     const path = urlObj.href.substring(urlObj.origin.length)
 
-    console.log(urlStr)
+    // console.log(urlStr)
 
     if (urlObj.protocol === 'http:') {
         urlObj.protocol = 'https:'
@@ -76,10 +76,10 @@ async function fetchHandler(req: Request): Promise<Response> {
         })
     }
 
-    console.log(path)
+    // console.log(path)
 
     if (path.startsWith('/http/')) {
-        return httpHandler(req, path.substr(6))
+        return httpHandler(req, path.substring(6))
     }
 
     switch (path) {
@@ -109,7 +109,7 @@ function httpHandler(req: Request, pathname: string) {
     }
 
     let acehOld = false
-    let rawLen = ''
+    let rawLen = 0
 
     const reqHdrNew = new Headers(reqHdrRaw)
     reqHdrNew.set('x-jsproxy', '1')
@@ -128,8 +128,10 @@ function httpHandler(req: Request, pathname: string) {
     }
     const param = new URLSearchParams(query)
 
+    console.log('param: ', param)
+
     for (const [k, v] of Object.entries(param)) {
-        if (k.substring(0, 2) === '--') {
+        if (k.startsWith('--')) {
             // 系统信息
             switch (k.substring(2)) {
                 case 'aceh':
@@ -137,7 +139,7 @@ function httpHandler(req: Request, pathname: string) {
                     break
                 case 'raw-info': {
                     const t = v.split('|')
-                    rawLen = t[1]
+                    rawLen = +t[1]
                     break
                 }
             }
@@ -174,7 +176,31 @@ function httpHandler(req: Request, pathname: string) {
     }
 }
 
-async function proxy(urlObj: URL, reqInit: RequestInit, acehOld: boolean, rawLen: string, retryTimes: number): Promise<Response> {
+const HeA = [
+    'access-control-allow-origin',
+    'access-control-expose-headers',
+    'location',
+    'set-cookie',
+]
+
+const HeB = [
+    'cache-control',
+    'content-language',
+    'content-type',
+    'expires',
+    'last-modified',
+    'pragma',
+]
+
+const Sta = [
+    301,
+    302,
+    303,
+    307,
+    308,
+]
+
+async function proxy(urlObj: URL, reqInit: RequestInit, acehOld: boolean, rawLen: number, retryTimes: number): Promise<Response> {
     const res = await fetch(urlObj.href, reqInit)
     const resHdrOld = res.headers
     const resHdrNew = new Headers(resHdrOld)
@@ -182,39 +208,28 @@ async function proxy(urlObj: URL, reqInit: RequestInit, acehOld: boolean, rawLen
     let expose = '*'
 
     for (const [k, v] of resHdrOld.entries()) {
-        if (k === 'access-control-allow-origin' ||
-            k === 'access-control-expose-headers' ||
-            k === 'location' ||
-            k === 'set-cookie'
-        ) {
+        if (HeA.includes(k)) {
             const x = '--' + k
             resHdrNew.set(x, v)
             if (acehOld) {
-                expose = expose + ',' + x
+                expose += ',' + x
             }
             resHdrNew.delete(k)
-        }
-        else if (acehOld &&
-            k !== 'cache-control' &&
-            k !== 'content-language' &&
-            k !== 'content-type' &&
-            k !== 'expires' &&
-            k !== 'last-modified' &&
-            k !== 'pragma'
+        } else if (acehOld && !HeB.includes(k)
         ) {
-            expose = expose + ',' + k
+            expose += ',' + k
         }
     }
 
     if (acehOld) {
-        expose = expose + ',--s'
+        expose += ',--s'
         resHdrNew.set('--t', '1')
     }
 
     // verify
     if (rawLen) {
-        const newLen = +(resHdrOld.get('content-length') || '0')
-        const badLen = (+rawLen !== newLen)
+        const newLen = +(resHdrOld.get('content-length') ?? '0')
+        const badLen = (rawLen !== newLen)
 
         if (badLen) {
             if (retryTimes < MAX_RETRY) {
@@ -245,13 +260,8 @@ async function proxy(urlObj: URL, reqInit: RequestInit, acehOld: boolean, rawLen
     resHdrNew.delete('content-security-policy-report-only')
     resHdrNew.delete('clear-site-data')
 
-    if (status === 301 ||
-        status === 302 ||
-        status === 303 ||
-        status === 307 ||
-        status === 308
-    ) {
-        status = status + 10
+    if (Sta.includes(status)) {
+        status += 10
     }
 
     return new Response(res.body, {
@@ -262,8 +272,11 @@ async function proxy(urlObj: URL, reqInit: RequestInit, acehOld: boolean, rawLen
 
 function isYtUrl(urlObj: URL) {
     return (
-        urlObj.host.endsWith('.googlevideo.com') &&
-        urlObj.pathname.startsWith('/videoplayback')
+        urlObj.host.endsWith('.googlevideo.com')
+        && urlObj.pathname.startsWith('/videoplayback')
+    ) || (
+        urlObj.host.endsWith('youtube.com')
+        && urlObj.pathname.startsWith('/youtubei')
     )
 }
 
