@@ -91,6 +91,7 @@ async function fetchHandler(req: Request): Promise<Response> {
     const path = urlObj.href.substring(urlObj.origin.length)
 
     // console.log(urlStr)
+    console.log('request: ', req)
 
     if (urlObj.protocol === 'http:') {
         urlObj.protocol = 'https:'
@@ -152,7 +153,7 @@ function httpHandler(req: Request, pathname: string) {
     }
     const param = new URLSearchParams(query)
 
-    console.log('param: ', param)
+    // console.log('param: ', param)
 
     for (const [k, v] of Object.entries(param)) {
         if (k.startsWith('--')) {
